@@ -1,0 +1,7 @@
+torch
+torchvision
+timm
+onnx
+onnxruntime
+onnxruntime-tools
+transformers==4.41.0

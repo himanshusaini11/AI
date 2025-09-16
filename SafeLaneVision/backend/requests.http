@@ -1,0 +1,24 @@
+### Health
+GET http://127.0.0.1:8000/health
+
+### Config
+GET http://127.0.0.1:8000/config
+
+### Provision
+POST http://127.0.0.1:8000/v1/provision
+Content-Type: application/json
+
+{"device_id":"ios-abc123","platform":"ios"}
+
+### Weather
+GET http://127.0.0.1:8000/v1/weather?lat=43.6532&lon=-79.3832
+
+### Route
+GET http://127.0.0.1:8000/v1/route?lat1=43.6532&lon1=-79.3832&lat2=43.6629&lon2=-79.3957
+
+### Ingest (replace HEADER with your signed header)
+POST http://127.0.0.1:8000/v1/ingest/event
+Authorization: HEADER
+Content-Type: application/json
+
+{"ts":"2025-08-20T15:05:00Z","device_id":"ios-abc123","geo":{"lat":43.6532,"lon":-79.3832},"class_":"cone","score":0.7,"bbox_xyxy":[5,5,15,15],"depth_m":2.2,"lane_offset_m":0.1,"ttc_s":1.5,"risk":0.5}

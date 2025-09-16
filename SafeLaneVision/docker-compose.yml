@@ -1,0 +1,30 @@
+services:
+  db:
+    build: ./db
+    platform: linux/arm64/v8
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: safelane
+    ports: ["127.0.0.1:55432:5432"]  # was 5432:5432
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/safelane
+      OPENWEATHER_KEY: ${OPENWEATHER_KEY}
+      MAPBOX_TOKEN: ${MAPBOX_TOKEN}
+      HTTP_TIMEOUT_S: ${HTTP_TIMEOUT_S:-15}
+      PROVIDER_MODE: ${PROVIDER_MODE:-premium}
+    env_file:
+      - .env
+    depends_on: [db]
+    ports: ["127.0.0.1:8000:8000"]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    restart: unless-stopped
+
+volumes:
+  db_data:
