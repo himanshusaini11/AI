@@ -1,0 +1,18 @@
+# Large/local artifacts (do not commit)
+models/
+outputs/generated_code/
+outputs/logs/
+outputs/.sandbox/
+outputs/.tools/
+CodeDescription.md
+
+# Bytecode and caches
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Streamlit local state
+.streamlit/
+
+# OS junk
+.DS_Store

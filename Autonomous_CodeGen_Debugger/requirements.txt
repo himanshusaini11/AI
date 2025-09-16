@@ -1,0 +1,14 @@
+# Core runtime dependencies
+streamlit>=1.33,<2.0
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.29,<1.0
+transformers>=4.54,<5.0
+torch>=2.2,<3.0
+huggingface-hub>=0.20,<1.0
+safetensors>=0.4,<1.0
+pydantic>=2.6,<3.0
+requests>=2.31,<3.0
+
+# Optional helpers (uncomment if needed)
+# accelerate>=0.27,<1.0
+# sentencepiece>=0.1.99,<0.2
