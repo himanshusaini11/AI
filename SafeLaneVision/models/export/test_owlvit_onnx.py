@@ -1,8 +1,20 @@
-import time, numpy as np, onnxruntime as ort
+import os
+import time
+
+import pytest
+
+np = pytest.importorskip("numpy")
+ort = pytest.importorskip("onnxruntime")
+pytest.importorskip("transformers")
+pytest.importorskip("PIL")
+
 from PIL import Image
 from transformers import OwlViTProcessor
 
 onnx_path = "models/export/owlvit.onnx"
+
+if not os.path.exists(onnx_path):
+    pytest.skip("OWL-ViT export not available", allow_module_level=True)
 mname = "google/owlvit-base-patch16"
 processor = OwlViTProcessor.from_pretrained(mname)
 

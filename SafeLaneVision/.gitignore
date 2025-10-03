@@ -15,3 +15,8 @@ node_modules/
 !README.md
 !**/README.md
 models/export/*.onnx
+models/export/*.ort
+mobile-native/ios/SafeLaneVisionMobile/Models/
+mobile-native/ios/Models/
+mobile-native/android/app/src/main/assets/models/
+Internal_Runbook.md

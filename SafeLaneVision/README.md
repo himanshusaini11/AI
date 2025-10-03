@@ -1,218 +1,156 @@
-Here’s a complete README.md you can drop into the repo.
+# SafeLane Vision
 
-# SafeLane Vision — Backend
+FastAPI + Postgres/PostGIS backend and a React Native mobile client for bicycle hazard detection. The backend is stable; the mobile app now builds under React Native 0.78 but still runs in demo-mode inference until the ONNX runtime pipeline is fully linked.
 
-FastAPI + Postgres/PostGIS backend for bicycle hazard detection. Includes HMAC device auth, request auditing, per-endpoint rate limiting, a 5-minute weather cache, and provider toggle between premium (Mapbox + OpenWeather) and free (OSRM + Open-Meteo).
+_Last validated: 2025-09-23 (UTC)_
 
-The API binds to localhost by default. Secrets live in `.env` (never commit). Docker Compose runs API and DB.
+## Project status snapshot
+- ✅ Backend: FastAPI service with HMAC auth, rate limiting, request audit, Overpass/weather/directions integrations, hazard clustering job, and `/v1/hazards/clustered`+/`/v1/routes/safe` endpoints.
+- ✅ Models: OWL-ViT, DeepLabv3, and MiDaS ONNX exports (INT8 + FP32) staged in `models/export/` with quantization/benchmark scripts.
+- 🚧 Mobile: RN 0.78 build succeeds after pod fixes, but Metro must be running and the JS bundle still needs to register `SafeLaneVisionMobile`; ONNX runtime headers (`rnworklets/rnworklets.h`) remain the blocker for switching off `USE_DEMO_PIPELINE`.
+- 🧭 Next focus: finish RNWorklets include fix, copy INT8 models into the simulator’s documents directory, flip `USE_DEMO_PIPELINE=false`, and hook `/v1/routes/safe` data into the dashboard tiles.
 
 ---
 
-## 1) Quick start
+## 1. Backend quick start
 
-1. Prerequisites  
-   - Docker Desktop with Compose  
-   - `curl`, `psql`, `openssl` (macOS has `openssl` via brew or system LibreSSL)  
-   - Optional: `jq` for output formatting
+1. Prerequisites
+   - Docker Desktop with Compose
+   - `curl`, `psql`, `openssl` (macOS bundles LibreSSL; Homebrew `openssl` works too)
+   - Optional: `jq` for pretty output
 
-2. Clone and prepare environment
+2. Setup
    ```bash
-   cp .env.example .env            # edit values; see section 3
+   cd SafeLaneVision
+   cp .env.example .env   # never commit .env
+   # edit .env with provider keys / secrets
    ```
 
-3. Build and run
-    ```bash
-    docker compose up -d --build
-    ```
+3. Run services
+   ```bash
+   docker compose up -d --build
+   ```
 
-4. Apply migrations (schema + audit)
-    ```bash
-    docker compose exec -T db psql -U postgres -d safelane -f /app/migrations/init.sql
-    docker compose exec -T db psql -U postgres -d safelane -f /app/migrations/audit.sql
-    ```
+4. Apply migrations
+   ```bash
+   docker compose exec -T db psql -U postgres -d safelane -f /app/migrations/init.sql
+   docker compose exec -T db psql -U postgres -d safelane -f /app/migrations/audit.sql
+   ```
 
-5. Verify health
-    ```bash
-    curl -s http://127.0.0.1:8000/health | jq .
-    curl -s http://127.0.0.1:8000/config | jq .
-    ```
+5. Smoke check
+   ```bash
+   curl -s http://127.0.0.1:8000/health | jq .
+   curl -s http://127.0.0.1:8000/config | jq .
+   ```
 
+Key ports: API on `127.0.0.1:8000`, Postgres on `127.0.0.1:55432` (mapped to container `5432`).
 
-## 2) Services and ports
-    - API: http://127.0.0.1:8000
-    - DB host bind: 127.0.0.1:55432 → container 5432
-        Example:
-        psql -h 127.0.0.1 -p 55432 -U postgres -d safelane
-    - Ports are bound to 127.0.0.1 for local security.
+---
 
-## 3) Environment variables
+## 2. Mobile app (React Native 0.78)
 
-Create .env (do not commit). Use .env.example as a template.
+All commands assume you’re in the DS Conda environment (`conda activate DS`). Active source lives in `SafeLaneVision/mobile-native`.
 
-Name	Type	Example	Notes
-PROVIDER_MODE	enum	premium | free	premium uses Mapbox + OpenWeather. free uses OSRM + Open-Meteo (no keys).
-OPENWEATHER_KEY	string	a1b2c3...	Required in premium. Obtain from OpenWeather dashboard.
-MAPBOX_TOKEN	string	pk.eyJ...	Required in premium. Mapbox public token.
-HTTP_TIMEOUT_S	number	15	HTTP client timeout.
-DEVICE_SECRET	string	hex_64	HMAC secret for device auth. Generate locally.
-ALLOW_PUBLIC_READS	bool	true	If false, GETs can be gated behind device auth.
-AUTH_CLOCK_SKEW_S	integer	300	Allowed time skew for signed headers.
+1. Install JS deps
+   ```bash
+   cd SafeLaneVision/mobile-native
+   npm install
+   ```
 
-Generate a strong secret:
+2. Install iOS pods
+   ```bash
+   cd ios
+   pod install
+   cd ..
+   ```
 
-openssl rand -hex 32
+3. Start Metro **before** launching the app (otherwise the simulator shows a blank screen):
+   ```bash
+   npm run start
+   # If you get stale cache errors, use: npx react-native start --reset-cache
+   ```
 
+4. In a separate terminal, build and run on the simulator:
+   ```bash
+   npx react-native run-ios
+   ```
 
-## 4) Architecture
+If Metro fails to start automatically, open `/SafeLaneVision/mobile-native/node_modules/.generated/launchPackager.command` manually or run the `start` script above. Ensure `AppRegistry.registerComponent('SafeLaneVisionMobile', ...)` is present in `mobile-native/index.js` so the bundle registers correctly.
 
-flowchart LR
-  A[React Native App] -->|frames + GPS| B[On-device CV\nOWL-ViT + MiDaS + DeepLabv3]
-  B -->|risk events| C[Signer (HMAC) + Uploader]
-  C -->|HTTPS| D[FastAPI]
-  D -->|insert| E[(Postgres\nPostGIS + pgvector)]
-  D -->|audit| J[(request_audit)]
-  D -->|tiles/geojson (future)| G[Dashboard]
-  D --> I[External APIs\nOverpass, Weather, Directions]
-  I --> D
-  B -->|HUD overlays| A
+---
 
+## 3. Model staging for the simulator
 
-## 5) Endpoints
-	•	GET /health → { "ok": true }
-	•	GET /config → provider mode, timeouts, presence of keys
-	•	POST /v1/provision → register/update device, returns class list and limits
-	•	GET /v1/weather?lat=&lon= → current weather (cached 5 min; 1 r/s, burst 3)
-	•	GET /v1/route?lat1=&lon1=&lat2=&lon2= → cycling route
-	•	GET /v1/overpass?lat=&lon=&r=800 → nearby OSM features (dev utility)
-	•	POST /v1/ingest/event → insert hazard event (HMAC auth required)
+The INT8 ONNX artifacts live under `SafeLaneVision/models/export/`. To copy them into the iOS simulator:
 
-## 6) Usage examples
+```bash
+# Stage latest models into mobile assets (keeps naming consistent)
+./mobile/scripts/sync-models.sh
 
-6.1 Provision
+# Launch the app at least once so the data container is created
+npx react-native run-ios
 
-curl -s -X POST http://127.0.0.1:8000/v1/provision \
-  -H 'Content-Type: application/json' \
-  -d '{"device_id":"ios-abc123","platform":"ios"}' | jq .
+# Locate the sandbox directory for the app
+bundle_id=org.reactjs.native.example.SafeLaneVisionMobile
+container=$(xcrun simctl get_app_container booted "$bundle_id" data)
 
-6.2 Weather and routing
+# Copy models into a documents subfolder the runtime can read
+mkdir -p "$container/Documents/models"
+cp mobile/assets/models/*.onnx "$container/Documents/models/"
+```
 
-curl -s 'http://127.0.0.1:8000/v1/weather?lat=43.6532&lon=-79.3832' | jq .
-curl -s 'http://127.0.0.1:8000/v1/route?lat1=43.6532&lon1=-79.3832&lat2=43.6629&lon2=-79.3957' | jq .
+Update `MODEL_PATHS` in `mobile-native/src/config.ts` to point at the copied files (or the relative asset paths if you keep them bundled). When the ONNX runtime spins up you’ll see `[PipelineEngine] ONNX Runtime sessions ready` in Metro and the HUD will stop relying on the demo loop.
 
-6.3 Signed ingest (HMAC-SHA256)
+---
 
-Generate the header using your .env values:
+## 4. Configuration highlights
 
-export DEVICE_SECRET="$(grep -E '^DEVICE_SECRET=' .env | cut -d= -f2-)"
-export DEVICE_ID="ios-abc123"
-export TS="$(date +%s)"
-export SIG="$(printf "%s.%s" "$DEVICE_ID" "$TS" | \
-  openssl dgst -sha256 -hmac "$DEVICE_SECRET" -r | awk '{print $1}')"
-export AUTH="Authorization: Device device_id=$DEVICE_ID,ts=$TS,sig=$SIG"
-echo "$AUTH"
+- Backend secrets live in `.env`. Sample values are in `.env.example`.
+- Mobile configuration: `mobile-native/src/config.ts` controls `API_BASE_URL`, `MODEL_PATHS`, the default routing destination, and the alert-gating thresholds for speed/visibility/precipitation.
+- The dashboard overlay polls `/v1/hazards/clustered` and `/v1/routes/safe` once the API base URL is set, and registers real ONNX model paths during app bootstrap.
 
-Send the event:
+---
 
-curl -s -H "$AUTH" -X POST http://127.0.0.1:8000/v1/ingest/event \
-  -H 'Content-Type: application/json' -d '{
-  "ts":"2025-08-20T15:05:00Z","device_id":"'"$DEVICE_ID"'",
-  "geo":{"lat":43.6532,"lon":-79.3832},"class_":"cone","score":0.7,
-  "bbox_xyxy":[5,5,15,15],"depth_m":2.2,"lane_offset_m":0.1,"ttc_s":1.5,"risk":0.5
-}'
+## 5. Known issues & troubleshooting
 
-Verify rows:
+| Issue | Symptoms | Mitigation |
+|-------|----------|------------|
+| Metro not running | Simulator shows blank screen, Xcode logs `SafeLaneVisionMobile has not been registered` | Run `npm run start` in `mobile-native`. Ensure Metro is running from the project root before `run-ios`. |
+| `rnworklets/rnworklets.h` not found | Xcode build fails when linking ONNX runtime modules | Podfile already sets module flags; remaining fix is to adjust header search/modulemap so RNWorklets exposes `rnworklets.h`. Investigate `node_modules/react-native-worklets-core` include path. |
+| `xcrun simctl addmedia` errors | Attempting to add `.onnx` via `addmedia` fails (`File type unsupported`) | Use `xcrun simctl get_app_container` + `cp` to move models into `Documents/` instead of `addmedia`. |
+| `/status` connection refused | Xcode logs show HTTP -1004 when app starts | Metro/dev server isn’t running on `localhost:8081`. Start Metro or embed a JS bundle before launching. |
 
-psql -h 127.0.0.1 -p 55432 -U postgres -d safelane -c \
-"SELECT class, risk, ts FROM hazards ORDER BY ts DESC LIMIT 5;"
+---
 
+## 6. Repository layout (high level)
 
-## 7) Provider toggle
+```
+SafeLaneVision/
+├── backend/                  # FastAPI service
+├── mobile-native/            # React Native 0.78 app (New Architecture)
+├── mobile/                   # Legacy RN scaffolding (kept for reference)
+├── models/export/            # ONNX models, quantization scripts, tests
+├── scripts/, tests/          # Backend jobs and coverage
+├── Roadmap.md                # Milestone breakdown
+├── Progress_Tracker.md       # ASCII progress dashboard
+└── Timeline.md               # Delivery plan
+```
 
-Switch to free providers (no keys needed):
+---
 
-# edit .env
-PROVIDER_MODE=free
-docker compose up -d --build
+## 7. Security reminders
+- Do **not** commit `.env` or mobile secrets. `.env.example` contains placeholders only.
+- Rotate `DEVICE_SECRET` if exposed; regenerate HMAC headers immediately after rotation.
+- Treat model artifacts as large binaries—keep them out of Git by using `.gitignore` and download scripts.
 
-Switch back to premium:
+---
 
-# edit .env with real keys
-PROVIDER_MODE=premium
-docker compose up -d --build
+## 8. Next steps checklist
+1. Fix RNWorklets include path so ONNX runtime loads (unblocks disabling `USE_DEMO_PIPELINE`).
+2. Stage INT8 models on simulator/device and verify inference through OWL-ViT, DeepLab, and MiDaS via the frame processor.
+3. Hook `/v1/routes/safe` into planner UI and expose hazard clusters on the dashboard heatmap.
+4. Begin alert gating logic (weather/speed) and expand automated test coverage.
 
+---
 
-## 8) Database schema and migrations
-
-Files:
-	•	backend/migrations/init.sql → core tables and indexes
-	•	backend/migrations/audit.sql → request_audit table
-
-Apply:
-
-docker compose exec -T db psql -U postgres -d safelane -f /app/migrations/init.sql
-docker compose exec -T db psql -U postgres -d safelane -f /app/migrations/audit.sql
-
-Quick checks:
-
-psql -h 127.0.0.1 -p 55432 -U postgres -d safelane -c "\dt"
-psql -h 127.0.0.1 -p 55432 -U postgres -d safelane -c \
-"SELECT method,path,status,ms,ts FROM request_audit ORDER BY id DESC LIMIT 5;"
-
-
-## 9) Rate limiting and caching
-	•	Weather: token bucket 1 r/s, burst 3. Change in backend/app/routes.py via limit("weather", rate, burst).
-	•	Route: token bucket defaults similarly.
-	•	Weather cache: 5 minutes, key rounded by ~110 m. Change TTL_S in backend/app/ext_weather.py.
-
-## 10) Project layout
-    ```bash
-    backend/
-    app/
-        main.py              # app wiring and routers
-        routes.py            # core endpoints
-        routes_status.py     # /health, /config
-        routes_provision.py  # /v1/provision
-        auth.py              # HMAC device auth
-        rl.py                # in-memory rate limiter
-        audit.py             # request audit middleware
-        http.py              # httpx client + retry
-        ext_overpass.py      # OSM Overpass wrapper
-        ext_weather.py       # weather provider + cache
-        ext_directions.py    # routing provider
-        db.py                # SQLAlchemy engine/session
-    migrations/
-        init.sql
-        audit.sql
-    docker-compose.yml
-    .env.example
-    ```
-
-## 11) Security
-	•	Do not commit .env. Keep .env.example with placeholders only.
-	•	Ports bind to 127.0.0.1 by default in docker-compose.yml.
-	•	Rotate DEVICE_SECRET if exposed. Regenerate signatures after rotation.
-	•	Mapbox token should be a public token for server use. Keep provider keys server-side.
-
-## 12) Troubleshooting
-	•	bind: address already in use 5432
-Another Postgres is running. Either stop it or change host bind to 127.0.0.1:55432:5432.
-	•	ModuleNotFoundError: psycopg2
-Use SQLAlchemy URL with psycopg driver: postgresql+psycopg://....
-	•	ValueError: could not convert string to float for HTTP_TIMEOUT_S
-Set a numeric value in .env, e.g. HTTP_TIMEOUT_S=15.
-	•	HTTP 429 from /v1/weather
-Rate limit hit. Wait 1 s or increase rate/burst.
-	•	401 Unauthorized on /v1/ingest/event
-Missing or invalid HMAC header. Regenerate with current Unix time.
-
-## 13) Roadmap (condensed)
-	•	Week 1: foundations (this backend, auth, cache, Overpass/Weather/Route).
-	•	Week 2: risk engine, dedupe via pgvector, upload packaging.
-	•	Week 3: routing improvements and admin dashboard.
-	•	Week 4: evaluation, thresholds, privacy hardening, basic CI.
-
-## 14) License
-
-Add a license file before publishing.
-
-If you want this split into `README.md` and `CONTRIBUTING.md`, say so and I will provide both.
+Questions or follow-ups? Open an issue or ping the team on the project channel.

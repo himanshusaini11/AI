@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "onnxruntime-react-native": "^1.22.0"
+  }
+}

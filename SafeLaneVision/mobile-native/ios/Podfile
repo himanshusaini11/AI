@@ -1,0 +1,83 @@
+# Resolve react_native_pods.rb with node to allow for hoisting
+require 'fileutils'
+require Pod::Executable.execute_command('node', ['-p',
+  'require.resolve(
+    "react-native/scripts/react_native_pods.rb",
+    {paths: [process.argv[1]]},
+  )', __dir__]).strip
+
+platform :ios, min_ios_version_supported
+ENV['RCT_NEW_ARCH_ENABLED'] = '1'
+prepare_react_native_project!
+
+linkage = ENV['USE_FRAMEWORKS']
+if linkage != nil
+  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
+  use_frameworks! :linkage => linkage.to_sym
+end
+
+target 'SafeLaneVisionMobile' do
+  config = use_native_modules!
+  pod 'RNWorklets', :path => '../node_modules/react-native-worklets'
+  pod 'react-native-worklets-core', :path => '../node_modules/react-native-worklets-core'
+
+  use_react_native!(
+    :path => config[:reactNativePath],
+    :new_arch_enabled => true,
+    # An absolute path to your application root.
+    :app_path => "#{Pod::Config.instance.installation_root}/.."
+  )
+
+  post_install do |installer|
+    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      :mac_catalyst_enabled => false,
+      # :ccache_enabled => true
+    )
+
+    installer.pods_project.targets.each do |target|
+      case target.name
+      when 'RNWorklets', 'react-native-worklets-core', 'ReactCodegen', 'react-native-safe-area-context'
+        target.build_configurations.each do |config|
+          config.build_settings['CLANG_ENABLE_MODULES'] = 'YES'
+          config.build_settings['DEFINES_MODULE'] = 'YES'
+          config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+          config.build_settings['USE_HEADERMAP'] = 'YES'
+          config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+          config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++20'
+        end
+      else
+        target.build_configurations.each do |config|
+          config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        end
+      end
+    end
+    worklets_header = File.join(__dir__, 'Pods/Headers/Private/RNWorklets/worklets/apple/WorkletsModule.h')
+    if File.exist?(worklets_header)
+      contents = File.read(worklets_header)
+      marker = '#import <rnworklets/rnworklets.h>'
+      replacement = <<~EOS.rstrip
+        #if __has_include(<rnworklets/rnworklets.h>)
+        #import <rnworklets/rnworklets.h>
+        #else
+        #import <RNWorkletsSpec/RNWorkletsSpec.h>
+        #endif
+      EOS
+      File.write(worklets_header, contents.gsub(marker, replacement)) if contents.include?(marker)
+    end
+
+    shim_header_body = <<~EOS
+      #pragma once
+      #import <RNWorkletsSpec/RNWorkletsSpec.h>
+    EOS
+    %w[Private Public].each do |scope|
+      shim_dir = File.join(__dir__, "Pods/Headers/#{scope}/RNWorklets/rnworklets")
+      FileUtils.mkdir_p(shim_dir)
+      shim_path = File.join(shim_dir, 'rnworklets.h')
+      File.write(shim_path, shim_header_body) unless File.exist?(shim_path)
+    end
+
+  end
+end

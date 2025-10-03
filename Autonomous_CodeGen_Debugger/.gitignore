@@ -6,6 +6,8 @@ outputs/.sandbox/
 outputs/.tools/
 CodeDescription.md
 issues_resolver.md
+testing/
+CRITIQUE_AND_PLAN.md
 
 # Bytecode and caches
 __pycache__/
