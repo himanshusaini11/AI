@@ -5,6 +5,7 @@ import {HazardBox, PipelineSummary} from '../pipeline/types';
 import {uploader} from '../services/uploader';
 import {pipelineEngine} from '../pipeline/engine';
 import {initializeModelPaths} from '../modelLoader';
+import {useTelemetryStore} from '../state/telemetryStore';
 
 export default function useHazardPipeline(): {
   boxes: HazardBox[];
@@ -23,6 +24,8 @@ export default function useHazardPipeline(): {
     const unsubscribe = frameScheduler.subscribe((nextBoxes, nextSummary) => {
       setBoxes(nextBoxes);
       setSummary(nextSummary);
+      const top = nextBoxes[0];
+      useTelemetryStore.getState().setFromPipeline(nextSummary, top);
     });
     initializeModelPaths()
       .then(() => pipelineEngine.initialize())

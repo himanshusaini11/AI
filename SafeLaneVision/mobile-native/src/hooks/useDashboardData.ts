@@ -12,6 +12,7 @@ import {
 } from '../config';
 import {fetchHazardClusters, fetchSafeRoute, SafeRouteSummary} from '../services/routing';
 import {usePipelineState} from '../state/pipelineStore';
+import {useTelemetryStore} from '../state/telemetryStore';
 
 const CLUSTER_REFRESH_MS = 60_000;
 const ROUTE_REFRESH_MS = 120_000;
@@ -136,6 +137,12 @@ export function useDashboardData(): DashboardState {
       reasons,
     };
   }, [speedMps, weather]);
+
+  const setGatingSnapshot = useTelemetryStore(state => state.setGating);
+
+  useEffect(() => {
+    setGatingSnapshot({suppressed: gate.suppressed, reasons: gate.reasons});
+  }, [gate, setGatingSnapshot]);
 
   return {loading, clusters, route, gate, error, lastUpdated, refresh};
 }

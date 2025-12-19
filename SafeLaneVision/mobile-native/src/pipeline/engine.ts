@@ -24,6 +24,8 @@ class PipelineEngine {
   private ready = false;
   private lastDepth = 4.0;
   private lastDepthTs = Date.now();
+  private lastFrameTs: number | null = null;
+  private fpsEma = 0;
 
   async initialize(): Promise<boolean> {
     if (this.ready || this.detectorSession) {
@@ -110,6 +112,13 @@ class PipelineEngine {
       this.lastDepthTs = now;
 
       const laneOffset = segmentation.laneOffset;
+      if (this.lastFrameTs != null) {
+        const intervalS = Math.max(1, now - this.lastFrameTs) / 1000;
+        const instFps = intervalS > 0 ? 1 / intervalS : this.fpsEma;
+        this.fpsEma = this.fpsEma ? this.fpsEma * 0.8 + instFps * 0.2 : instFps;
+      }
+      this.lastFrameTs = now;
+
       const risk = calculateRisk({
         classLabel,
         score,
@@ -135,7 +144,7 @@ class PipelineEngine {
 
       const summary: PipelineSummary = {
         status: 'running',
-        fps: 12,
+        fps: Number((this.fpsEma || 0).toFixed(1)),
         lastUpdated: now,
       };
       return {boxes: [hazard], summary};

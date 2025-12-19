@@ -11,10 +11,10 @@
 		3F2AFE07D65DA0C109A92C8A /* libPods-SafeLaneVisionMobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 895809C9E531052CD6077B82 /* libPods-SafeLaneVisionMobile.a */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
-		F3F05E1F1EE93330A803AD1A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		C9A3E96D2C79C3D900FCD4C1 /* owlvit.ort in Resources */ = {isa = PBXBuildFile; fileRef = C9A3E96A2C79C3D900FCD4C1 /* owlvit.ort */; };
 		C9A3E96E2C79C3D900FCD4C1 /* deeplab_mnv3.ort in Resources */ = {isa = PBXBuildFile; fileRef = C9A3E96B2C79C3D900FCD4C1 /* deeplab_mnv3.ort */; };
 		C9A3E96F2C79C3D900FCD4C1 /* midas_small.ort in Resources */ = {isa = PBXBuildFile; fileRef = C9A3E96C2C79C3D900FCD4C1 /* midas_small.ort */; };
+		F3F05E1F1EE93330A803AD1A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,10 +26,10 @@
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = SafeLaneVisionMobile/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = SafeLaneVisionMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		895809C9E531052CD6077B82 /* libPods-SafeLaneVisionMobile.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SafeLaneVisionMobile.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A5AB72C737F2D21E9807B515 /* Pods-SafeLaneVisionMobile.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SafeLaneVisionMobile.release.xcconfig"; path = "Target Support Files/Pods-SafeLaneVisionMobile/Pods-SafeLaneVisionMobile.release.xcconfig"; sourceTree = "<group>"; };
 		C9A3E96A2C79C3D900FCD4C1 /* owlvit.ort */ = {isa = PBXFileReference; lastKnownFileType = file; path = owlvit.ort; sourceTree = "<group>"; };
 		C9A3E96B2C79C3D900FCD4C1 /* deeplab_mnv3.ort */ = {isa = PBXFileReference; lastKnownFileType = file; path = deeplab_mnv3.ort; sourceTree = "<group>"; };
 		C9A3E96C2C79C3D900FCD4C1 /* midas_small.ort */ = {isa = PBXFileReference; lastKnownFileType = file; path = midas_small.ort; sourceTree = "<group>"; };
-		A5AB72C737F2D21E9807B515 /* Pods-SafeLaneVisionMobile.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SafeLaneVisionMobile.release.xcconfig"; path = "Target Support Files/Pods-SafeLaneVisionMobile/Pods-SafeLaneVisionMobile.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -202,7 +202,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export NODE_BINARY=node\n    ../node_modules/react-native/scripts/react-native-xcode.sh\n";
+			shellScript = "export NODE_BINARY=/opt/homebrew/bin/node\n    ../node_modules/react-native/scripts/react-native-xcode.sh\n";
 		};
 		567208D7697E70C00A34B9E0 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -281,6 +281,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 27RC43JMKY;
 				ENABLE_BITCODE = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = SafeLaneVisionMobile/Info.plist;
@@ -295,7 +296,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.himanshusaini11.SafeLaneVision;
 				PRODUCT_NAME = SafeLaneVisionMobile;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -310,6 +311,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 27RC43JMKY;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = SafeLaneVisionMobile/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -323,7 +325,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.himanshusaini11.SafeLaneVision;
 				PRODUCT_NAME = SafeLaneVisionMobile;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";

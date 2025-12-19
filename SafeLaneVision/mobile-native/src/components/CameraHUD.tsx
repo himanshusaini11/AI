@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {Dimensions, PermissionsAndroid, Platform, StyleSheet, Text, View} from 'react-native';
 import {
   Camera,
@@ -10,6 +10,8 @@ import Svg, {Rect, Text as SvgText} from 'react-native-svg';
 import {runOnJS} from 'react-native-reanimated';
 
 import useHazardPipeline from '../hooks/useHazardPipeline';
+import {useFrameReplay} from '../hooks/useFrameReplay';
+import {enqueueFrame, drainFrames, toMeta} from '../pipeline/frameBridge';
 import {frameScheduler} from '../pipeline/frameScheduler';
 import {FrameMeta} from '../pipeline/types';
 
@@ -27,6 +29,7 @@ const CameraHUD: React.FC = () => {
   const device = useCameraDevice('back');
   const [permission, setPermission] = useState<CameraPermissionStatus>('not-determined');
   const {boxes, summary} = useHazardPipeline();
+  const replayActive = useFrameReplay(!device || permission !== 'granted');
 
   useEffect(() => {
     (async () => {
@@ -40,35 +43,67 @@ const CameraHUD: React.FC = () => {
     })();
   }, []);
 
-  const processFrame = useCallback((rgba: ArrayBuffer, width: number, height: number) => {
-    const meta: FrameMeta = {
-      ts: Date.now(),
-      width,
-      height,
-    };
-    frameScheduler
-      .processFrame(new Uint8Array(rgba), meta)
-      .catch(err => console.warn('[CameraHUD] frame processing error', err));
-  }, []);
-
   const frameProcessor = useFrameProcessor(frame => {
     'worklet';
     const rgba = frame.toArrayBuffer?.();
     if (rgba != null) {
-      runOnJS(processFrame)(rgba, frame.width, frame.height);
+      const bytes = new Uint8Array(rgba);
+      runOnJS(enqueueFrame)(bytes, frame.width, frame.height);
     }
-  }, [processFrame]);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const flush = () => {
+      if (cancelled) {
+        return;
+      }
+      const frames = drainFrames();
+      for (const packet of frames) {
+        const meta: FrameMeta = toMeta(packet);
+        frameScheduler
+          .processFrame(packet.data, meta)
+          .catch(err => console.warn('[CameraHUD] frame processing error', err));
+      }
+      requestAnimationFrame(flush);
+    };
+
+    flush();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const viewBox = useMemo(() => {
     const {width, height} = Dimensions.get('window');
     return {width, height};
   }, []);
 
+  useEffect(() => {
+    if (device && permission === 'granted') {
+      frameScheduler.stop();
+      return;
+    }
+    if (replayActive) {
+      frameScheduler.stop();
+      return () => frameScheduler.stop();
+    }
+    frameScheduler.startDemoLoop(1000 / HUD_FPS);
+    return () => frameScheduler.stop();
+  }, [device, permission, replayActive]);
+
   if (!device || permission !== 'granted') {
     return (
       <View style={styles.permissionContainer}>
         <Text style={styles.permissionText}>
           Camera permission is required to start SafeLane Vision.
+        </Text>
+        <Text style={styles.permissionSubtext}>
+          {replayActive
+            ? 'Replaying demo video frames for telemetry.'
+            : 'Showing demo telemetry.'}
         </Text>
       </View>
     );
@@ -129,6 +164,12 @@ const styles = StyleSheet.create({
   permissionText: {
     color: '#fff',
     fontSize: 16,
+    textAlign: 'center',
+  },
+  permissionSubtext: {
+    color: '#bbb',
+    fontSize: 12,
+    marginTop: 8,
     textAlign: 'center',
   },
   hudBanner: {

@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://127.0.0.1:8000';
+export const API_BASE_URL = process.env.API_BASE_URL ?? 'http://192.168.1.2:8000';
 export const DEVICE_ID = 'ios-demo';
 export const DEVICE_SECRET = '9b2208a7d058c4a53a722b0661fd21f692bef5eb6f876e3fb3bc43f028bd890e';
 

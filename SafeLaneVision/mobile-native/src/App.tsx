@@ -3,10 +3,12 @@ import {SafeAreaView, StatusBar, StyleSheet, View} from 'react-native';
 import CameraHUD from './components/CameraHUD';
 import DashboardTiles from './components/DashboardTiles';
 import {useDashboardData} from './hooks/useDashboardData';
+import {useTelemetryLogger} from './hooks/useTelemetryLogger';
 import {initializeModelPaths} from './modelLoader';
 
 const App = () => {
   const {clusters, route, gate, loading, error, lastUpdated, refresh} = useDashboardData();
+  useTelemetryLogger();
 
   return (
     <SafeAreaView style={styles.root}>

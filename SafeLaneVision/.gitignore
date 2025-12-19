@@ -19,4 +19,5 @@ models/export/*.ort
 mobile-native/ios/SafeLaneVisionMobile/Models/
 mobile-native/ios/Models/
 mobile-native/android/app/src/main/assets/models/
+/frames/
 Internal_Runbook.md

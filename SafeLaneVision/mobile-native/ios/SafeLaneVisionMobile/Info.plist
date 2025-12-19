@@ -43,10 +43,10 @@
 	<string>Location is used to score nearby hazards and routing.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>“This app requires microphone access for video recording.”</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>This app needs photo library access to review captured hazards.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>“This app saves captured media to your library.”</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs photo library access to review captured hazards.</string>
 	<key>RCTNewArchEnabled</key>
 	<false/>
 	<key>UILaunchStoryboardName</key>
